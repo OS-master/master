@@ -1,0 +1,31 @@
+###############################################################
+# Configuration file for Bochs
+###############################################################
+
+# how much memory the emulated machine will have
+megs: 32
+
+# filename of ROM images
+romimage: file=/home/mac/Desktop/bochs-2.6.8/bios/BIOS-bochs-latest
+vgaromimage: file=/home/mac/Desktop/bochs-2.6.8/bios/VGABIOS-lgpl-latest
+
+#ata0-master: type=disk, path=freedos.img, cylinders=306, heads=4, spt=17
+
+# what disk images will be used
+floppya: 1_44=a.img, status=inserted
+#floppya: 1_44=freedos.img, status=inserted
+#floppyb: 1_44=pm.img, status=inserted
+
+# choose the boot disk.
+boot: a
+
+# where do we send log messages?
+# log: bochsout.txt
+
+# disable the mouse
+mouse: enabled=0
+
+#cpu: ips=15000000
+
+# enable key mapping, using US layout as default.
+keyboard:keymap=/home/mac/Desktop/bochs-2.6.8/gui/keymaps/x11-pc-us.map
