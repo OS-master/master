@@ -6,18 +6,22 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 #include "type.h"
+#include "stdio.h"
 #include "const.h"
 #include "protect.h"
-#include "proto.h"
+#include "tty.h"
+#include "console.h"
 #include "string.h"
+#include "fs.h"
+#include "proc.h"
 #include "global.h"
+#include "proto.h"
 
 
 /*======================================================================*
                                itoa
  *======================================================================*/
-/* 数字前面的 0 不被显示出来, 比如 0000B800 被显示成 B800 */
-PUBLIC char * itoa(char * str, int num)
+PUBLIC char * itoa(char * str, int num)/* 数字前面的 0 不被显示出来, 比如 0000B800 被显示成 B800 */
 {
 	char *	p = str;
 	char	ch;
@@ -49,6 +53,7 @@ PUBLIC char * itoa(char * str, int num)
 	return str;
 }
 
+
 /*======================================================================*
                                disp_int
  *======================================================================*/
@@ -57,4 +62,18 @@ PUBLIC void disp_int(int input)
 	char output[16];
 	itoa(output, input);
 	disp_str(output);
+}
+
+/*======================================================================*
+                               delay
+ *======================================================================*/
+PUBLIC void delay(int time)
+{
+	int i, j, k;
+	for(k=0;k<time;k++){
+		/*for(i=0;i<10000;i++){	for Virtual PC	*/
+		for(i=0;i<10;i++){/*	for Bochs	*/
+			for(j=0;j<10000;j++){}
+		}
+	}
 }
