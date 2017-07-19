@@ -25,6 +25,8 @@
 PRIVATE void init_fs();
 PRIVATE void mkfs();
 PRIVATE void read_super_block(int dev);
+PRIVATE int fs_fork();
+PRIVATE int fs_exit();
 
 /*****************************************************************************
  *                                task_fs
@@ -35,7 +37,7 @@ PRIVATE void read_super_block(int dev);
  *****************************************************************************/
 PUBLIC void task_fs()
 {
-	printl("Task FS begins.\n");
+	printl("{FS} Task FS begins.\n");
 
 	init_fs();
 
@@ -63,18 +65,18 @@ PUBLIC void task_fs()
 		case RESUME_PROC:
 			src = fs_msg.PROC_NR;
 			break;
+		case FORK:
+			fs_msg.RETVAL = fs_fork();
+			break;
+		case EXIT:
+			fs_msg.RETVAL = fs_exit();
+			break;
 		/* case LSEEK: */
 		/* 	fs_msg.OFFSET = do_lseek(); */
 		/* 	break; */
-		/* case FORK: */
-		/* 	fs_msg.RETVAL = fs_fork(); */
-		/* 	break; */
-		/* case EXIT: */
-		/* 	fs_msg.RETVAL = fs_exit(); */
-		/* 	break; */
-		/* case STAT: */
-		/* 	fs_msg.RETVAL = do_stat(); */
-		/* 	break; */
+		case STAT:
+			fs_msg.RETVAL = do_stat();
+			break;
 		default:
 			dump_msg("FS::unknown message:", &fs_msg);
 			assert(0);
@@ -94,20 +96,20 @@ PUBLIC void task_fs()
 		/* msg_name[STAT]   = "STAT"; */
 
 		switch (msgtype) {
-		case CLOSE:
 		case UNLINK:
-			//dump_fd_graph("%s just finished.", msg_name[msgtype]);
+			dump_fd_graph("%s just finished. (pid:%d)",
+				      msg_name[msgtype], src);
 			//panic("");
 		case OPEN:
+		case CLOSE:
 		case READ:
 		case WRITE:
-		/* case FORK: */
+		case FORK:
+		case EXIT:
 		/* case LSEEK: */
-		/* case EXIT: */
-		/* case STAT: */
+		case STAT:
 			break;
 		case RESUME_PROC:
-		case DISK_LOG:
 			break;
 		default:
 			assert(0);
@@ -172,6 +174,7 @@ PRIVATE void init_fs()
  * <Ring 1> Make a available Orange'S FS in the disk. It will
  *          - Write a super block to sector 1.
  *          - Create three special files: dev_tty0, dev_tty1, dev_tty2
+ *          - Create a file cmd.tar
  *          - Create the inode map
  *          - Create the sector map
  *          - Create the inodes of the files
@@ -182,8 +185,9 @@ PRIVATE void mkfs()
 	MESSAGE driver_msg;
 	int i, j;
 
-	int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
-
+	/************************/
+	/*      super block     */
+	/************************/
 	/* get the geometry of ROOTDEV */
 	struct part_info geo;
 	driver_msg.type		= DEV_IOCTL;
@@ -194,13 +198,12 @@ PRIVATE void mkfs()
 	assert(dd_map[MAJOR(ROOT_DEV)].driver_nr != INVALID_DRIVER);
 	send_recv(BOTH, dd_map[MAJOR(ROOT_DEV)].driver_nr, &driver_msg);
 
-	printl("dev size: 0x%x sectors\n", geo.size);
+	printl("{FS} dev size: 0x%x sectors\n", geo.size);
 
-	/************************/
-	/*      super block     */
-	/************************/
+	int bits_per_sect = SECTOR_SIZE * 8; /* 8 bits per byte */
+	/* generate a super block */
 	struct super_block sb;
-	sb.magic	  = MAGIC_V1;
+	sb.magic	  = MAGIC_V1; /* 0x111 */
 	sb.nr_inodes	  = bits_per_sect;
 	sb.nr_inode_sects = sb.nr_inodes * INODE_SIZE / SECTOR_SIZE;
 	sb.nr_sects	  = geo.size; /* partition size in sector */
@@ -224,7 +227,7 @@ PRIVATE void mkfs()
 	/* write the super block */
 	WR_SECT(ROOT_DEV, 1);
 
-	printl("devbase:0x%x00, sb:0x%x00, imap:0x%x00, smap:0x%x00\n"
+	printl("{FS} devbase:0x%x00, sb:0x%x00, imap:0x%x00, smap:0x%x00\n"
 	       "        inodes:0x%x00, 1st_sector:0x%x00\n", 
 	       geo.base * 2,
 	       (geo.base + 1) * 2,
@@ -237,17 +240,18 @@ PRIVATE void mkfs()
 	/*       inode map      */
 	/************************/
 	memset(fsbuf, 0, SECTOR_SIZE);
-	for (i = 0; i < (NR_CONSOLES + 2); i++)
+	for (i = 0; i < (NR_CONSOLES + 3); i++)
 		fsbuf[0] |= 1 << i;
 
-	assert(fsbuf[0] == 0x1F);/* 0001 1111 : 
-				  *    | ||||
-				  *    | |||`--- bit 0 : reserved
-				  *    | ||`---- bit 1 : the first inode,
-				  *    | ||              which indicates `/'
-				  *    | |`----- bit 2 : /dev_tty0
-				  *    | `------ bit 3 : /dev_tty1
-				  *    `-------- bit 4 : /dev_tty2
+	assert(fsbuf[0] == 0x3F);/* 0011 1111 :
+				  *   || ||||
+				  *   || |||`--- bit 0 : reserved
+				  *   || ||`---- bit 1 : the first inode,
+				  *   || ||              which indicates `/'
+				  *   || |`----- bit 2 : /dev_tty0
+				  *   || `------ bit 3 : /dev_tty1
+				  *   |`-------- bit 4 : /dev_tty2
+				  *   `--------- bit 5 : /cmd.tar
 				  */
 	WR_SECT(ROOT_DEV, 2);
 
@@ -273,6 +277,31 @@ PRIVATE void mkfs()
 	for (i = 1; i < sb.nr_smap_sects; i++)
 		WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + i);
 
+	/* cmd.tar */
+	/* make sure it'll not be overwritten by the disk log */
+	assert(INSTALL_START_SECT + INSTALL_NR_SECTS < 
+	       sb.nr_sects - NR_SECTS_FOR_LOG);
+	int bit_offset = INSTALL_START_SECT -
+		sb.n_1st_sect + 1; /* sect M <-> bit (M - sb.n_1stsect + 1) */
+	int bit_off_in_sect = bit_offset % (SECTOR_SIZE * 8);
+	int bit_left = INSTALL_NR_SECTS;
+	int cur_sect = bit_offset / (SECTOR_SIZE * 8);
+	RD_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + cur_sect);
+	while (bit_left) {
+		int byte_off = bit_off_in_sect / 8;
+		/* this line is ineffecient in a loop, but I don't care */
+		fsbuf[byte_off] |= 1 << (bit_off_in_sect % 8);
+		bit_left--;
+		bit_off_in_sect++;
+		if (bit_off_in_sect == (SECTOR_SIZE * 8)) {
+			WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + cur_sect);
+			cur_sect++;
+			RD_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + cur_sect);
+			bit_off_in_sect = 0;
+		}
+	}
+	WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + cur_sect);
+
 	/************************/
 	/*       inodes         */
 	/************************/
@@ -280,9 +309,10 @@ PRIVATE void mkfs()
 	memset(fsbuf, 0, SECTOR_SIZE);
 	struct inode * pi = (struct inode*)fsbuf;
 	pi->i_mode = I_DIRECTORY;
-	pi->i_size = DIR_ENTRY_SIZE * 4; /* 4 files:
+	pi->i_size = DIR_ENTRY_SIZE * 5; /* 5 files:
 					  * `.',
 					  * `dev_tty0', `dev_tty1', `dev_tty2',
+					  * `cmd.tar'
 					  */
 	pi->i_start_sect = sb.n_1st_sect;
 	pi->i_nr_sects = NR_DEFAULT_FILE_SECTS;
@@ -294,6 +324,12 @@ PRIVATE void mkfs()
 		pi->i_start_sect = MAKE_DEV(DEV_CHAR_TTY, i);
 		pi->i_nr_sects = 0;
 	}
+	/* inode of `/cmd.tar' */
+	pi = (struct inode*)(fsbuf + (INODE_SIZE * (NR_CONSOLES + 1)));
+	pi->i_mode = I_REGULAR;
+	pi->i_size = INSTALL_NR_SECTS * SECTOR_SIZE;
+	pi->i_start_sect = INSTALL_START_SECT;
+	pi->i_nr_sects = INSTALL_NR_SECTS;
 	WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + sb.nr_smap_sects);
 
 	/************************/
@@ -311,6 +347,8 @@ PRIVATE void mkfs()
 		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
 		sprintf(pde->name, "dev_tty%d", i);
 	}
+	(++pde)->inode_nr = NR_CONSOLES + 2;
+	sprintf(pde->name, "cmd.tar", i);
 	WR_SECT(ROOT_DEV, sb.n_1st_sect);
 }
 
@@ -505,5 +543,53 @@ PUBLIC void sync_inode(struct inode * p)
 	pinode->i_start_sect = p->i_start_sect;
 	pinode->i_nr_sects = p->i_nr_sects;
 	WR_SECT(p->i_dev, blk_nr);
+}
+
+/*****************************************************************************
+ *                                fs_fork
+ *****************************************************************************/
+/**
+ * Perform the aspects of fork() that relate to files.
+ * 
+ * @return Zero if success, otherwise a negative integer.
+ *****************************************************************************/
+PRIVATE int fs_fork()
+{
+	int i;
+	struct proc* child = &proc_table[fs_msg.PID];
+	for (i = 0; i < NR_FILES; i++) {
+		if (child->filp[i]) {
+			child->filp[i]->fd_cnt++;
+			child->filp[i]->fd_inode->i_cnt++;
+		}
+	}
+
+	return 0;
+}
+
+
+/*****************************************************************************
+ *                                fs_exit
+ *****************************************************************************/
+/**
+ * Perform the aspects of exit() that relate to files.
+ * 
+ * @return Zero if success.
+ *****************************************************************************/
+PRIVATE int fs_exit()
+{
+	int i;
+	struct proc* p = &proc_table[fs_msg.PID];
+	for (i = 0; i < NR_FILES; i++) {
+		if (p->filp[i]) {
+			/* release the inode */
+			p->filp[i]->fd_inode->i_cnt--;
+			/* release the file desc slot */
+			if (--p->filp[i]->fd_cnt == 0)
+				p->filp[i]->fd_inode = 0;
+			p->filp[i] = 0;
+		}
+	}
+	return 0;
 }
 

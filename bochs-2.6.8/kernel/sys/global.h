@@ -21,7 +21,13 @@ EXTERN	u8			idt_ptr[6];	/* 0~15:Limit  16~47:Base */
 EXTERN	struct gate		idt[IDT_SIZE];
 
 EXTERN	u32	k_reenter;
-EXTERN	int	nr_current_console;
+EXTERN	int	current_console;
+
+EXTERN	int	key_pressed; /**
+			      * used for clock_handler
+			      * to wake up TASK_TTY when
+			      * a key is pressed
+			      */
 
 EXTERN	struct tss	tss;
 EXTERN	struct proc*	p_proc_ready;
@@ -34,6 +40,12 @@ extern	irq_handler	irq_table[];
 extern	TTY		tty_table[];
 extern  CONSOLE		console_table[];
 
+/* MM */
+EXTERN	MESSAGE			mm_msg;
+extern	u8 *			mmbuf;
+extern	const int		MMBUF_SIZE;
+EXTERN	int			memory_size;
+
 /* FS */
 EXTERN	struct file_desc	f_desc_table[NR_FILE_DESC];
 EXTERN	struct inode		inode_table[NR_INODE];
@@ -45,3 +57,8 @@ EXTERN	struct proc *		pcaller;
 EXTERN	struct inode *		root_inode;
 extern	struct dev_drv_map	dd_map[];
 
+/* for test only */
+extern	char *			logbuf;
+extern	const int		LOGBUF_SIZE;
+extern	char *			logdiskbuf;
+extern	const int		LOGDISKBUF_SIZE;

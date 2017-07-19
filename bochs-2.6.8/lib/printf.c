@@ -56,13 +56,14 @@ printf(fmt, i, j);
 
 ******************************************************************************************/
 
-
 /*****************************************************************************
  *                                printf
  *****************************************************************************/
 /**
  * The most famous one.
  *
+ * @note do not call me in any TASK, call me in USER PROC.
+ * 
  * @param fmt  The format string
  * 
  * @return  The number of chars printed.
@@ -72,10 +73,7 @@ PUBLIC int printf(const char *fmt, ...)
 	int i;
 	char buf[STR_DEFAULT_LEN];
 
-	va_list arg = (va_list)((char*)(&fmt) + 4); /**
-						     * 4: size of `fmt' in
-						     *    the stack
-						     */
+	va_list arg = (va_list)((char*)(&fmt) + 4);        /* 4 是参数 fmt 所占堆栈中的大小 */
 	i = vsprintf(buf, fmt, arg);
 	int c = write(1, buf, i);
 
@@ -108,3 +106,4 @@ PUBLIC int printl(const char *fmt, ...)
 
 	return i;
 }
+

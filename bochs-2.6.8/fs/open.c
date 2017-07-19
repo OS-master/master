@@ -77,7 +77,7 @@ PUBLIC int do_open()
 	struct inode * pin = 0;
 	if (flags & O_CREAT) {
 		if (inode_nr) {
-			printl("file exists.\n");
+			printl("{FS} file exists.\n");
 			return -1;
 		}
 		else {
@@ -102,7 +102,7 @@ PUBLIC int do_open()
 		f_desc_table[i].fd_inode = pin;
 
 		f_desc_table[i].fd_mode = flags;
-		/* f_desc_table[i].fd_cnt = 1; */
+		f_desc_table[i].fd_cnt = 1;
 		f_desc_table[i].fd_pos = 0;
 
 		int imode = pin->i_mode & I_TYPE_MASK;
@@ -145,8 +145,6 @@ PUBLIC int do_open()
  * 
  * @see open()
  * @see do_open()
- *
- * @todo return values of routines called, return values of self.
  *****************************************************************************/
 PRIVATE struct inode * create_file(char * path, int flags)
 {
@@ -178,7 +176,8 @@ PUBLIC int do_close()
 {
 	int fd = fs_msg.FD;
 	put_inode(pcaller->filp[fd]->fd_inode);
-	pcaller->filp[fd]->fd_inode = 0;
+	if (--pcaller->filp[fd]->fd_cnt == 0)
+		pcaller->filp[fd]->fd_inode = 0;
 	pcaller->filp[fd] = 0;
 
 	return 0;

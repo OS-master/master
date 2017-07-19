@@ -104,47 +104,6 @@ PUBLIC int sys_sendrec(int function, int src_dest, MESSAGE* m, struct proc* p)
 }
 
 /*****************************************************************************
- *                                send_recv
- *****************************************************************************/
-/**
- * <Ring 1~3> IPC syscall.
- *
- * It is an encapsulation of `sendrec',
- * invoking `sendrec' directly should be avoided
- *
- * @param function  SEND, RECEIVE or BOTH
- * @param src_dest  The caller's proc_nr
- * @param msg       Pointer to the MESSAGE struct
- * 
- * @return always 0.
- *****************************************************************************/
-PUBLIC int send_recv(int function, int src_dest, MESSAGE* msg)
-{
-	int ret = 0;
-
-	if (function == RECEIVE)
-		memset(msg, 0, sizeof(MESSAGE));
-
-	switch (function) {
-	case BOTH:
-		ret = sendrec(SEND, src_dest, msg);
-		if (ret == 0)
-			ret = sendrec(RECEIVE, src_dest, msg);
-		break;
-	case SEND:
-	case RECEIVE:
-		ret = sendrec(function, src_dest, msg);
-		break;
-	default:
-		assert((function == BOTH) ||
-		       (function == SEND) || (function == RECEIVE));
-		break;
-	}
-
-	return ret;
-}
-
-/*****************************************************************************
  *				  ldt_seg_linear
  *****************************************************************************/
 /**
@@ -181,7 +140,7 @@ PUBLIC void* va2la(int pid, void* va)
 	u32 seg_base = ldt_seg_linear(p, INDEX_LDT_RW);
 	u32 la = seg_base + (u32)va;
 
-	if (pid < NR_TASKS + NR_PROCS) {
+	if (pid < NR_TASKS + NR_NATIVE_PROCS) {
 		assert(la == (u32)va);
 	}
 
@@ -587,7 +546,7 @@ PUBLIC void dump_proc(struct proc* p)
 	sprintf(info, "ldt_sel: 0x%x.  ", p->ldt_sel); disp_color_str(info, text_color);
 	sprintf(info, "ticks: 0x%x.  ", p->ticks); disp_color_str(info, text_color);
 	sprintf(info, "priority: 0x%x.  ", p->priority); disp_color_str(info, text_color);
-	sprintf(info, "pid: 0x%x.  ", p->pid); disp_color_str(info, text_color);
+	/* sprintf(info, "pid: 0x%x.  ", p->pid); disp_color_str(info, text_color); */
 	sprintf(info, "name: %s.  ", p->name); disp_color_str(info, text_color);
 	disp_color_str("\n", text_color);
 	sprintf(info, "p_flags: 0x%x.  ", p->p_flags); disp_color_str(info, text_color);
