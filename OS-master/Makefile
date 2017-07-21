@@ -105,8 +105,20 @@ kernel/start.o: kernel/start.c /usr/include/stdc-predef.h include/type.h \
  include/stdio.h include/type.h include/const.h include/protect.h \
  include/string.h include/fs.h include/proc.h include/tty.h \
  include/console.h include/global.h include/proto.h
+	$(CC) $(CFLAGS) -o $@ $<
 
-
+main.o: kernel/main.c /usr/include/stdc-predef.h include/type.h \
+ include/stdio.h include/type.h include/const.h include/protect.h \
+ include/string.h include/fs.h include/proc.h include/tty.h \
+ include/console.h include/global.h include/proto.h /usr/include/time.h \
+ /usr/include/features.h /usr/include/i386-linux-gnu/sys/cdefs.h \
+ /usr/include/i386-linux-gnu/bits/wordsize.h \
+ /usr/include/i386-linux-gnu/gnu/stubs.h \
+ /usr/include/i386-linux-gnu/gnu/stubs-32.h \
+ /usr/lib/gcc/i686-linux-gnu/5/include/stddef.h \
+ /usr/include/i386-linux-gnu/bits/time.h \
+ /usr/include/i386-linux-gnu/bits/types.h \
+ /usr/include/i386-linux-gnu/bits/typesizes.h /usr/include/xlocale.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 kernel/main.o: kernel/main.c

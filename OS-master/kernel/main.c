@@ -1,10 +1,3 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            main.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
 #include "type.h"
 #include "stdio.h"
 #include "const.h"
@@ -16,7 +9,10 @@
 #include "console.h"
 #include "global.h"
 #include "proto.h"
+#include <time.h>
+#include <string.h>
 
+#define MAXIMUS 10
 
 /*****************************************************************************
  *                               kernel_main
@@ -25,6 +21,10 @@
  * jmp from kernel.asm::_start. 
  * 
  *****************************************************************************/
+
+//char __path[128][128];
+//int __pathCount;
+
 PUBLIC int kernel_main()
 {
 	disp_str("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
@@ -249,7 +249,7 @@ void untar(const char * filename)
  * 
  * @param tty_name  TTY file name.
  *****************************************************************************/
-void shabby_shell(const char * tty_name)
+/*void shabby_shell(const char * tty_name)
 {
 	int fd_stdin  = open(tty_name, O_RDWR);
 	assert(fd_stdin  == 0);
@@ -295,11 +295,13 @@ void shabby_shell(const char * tty_name)
 		else {
 			close(fd);
 			int pid = fork();
-			if (pid != 0) { /* parent */
+			if (pid != 0) { 
+ //parent 
 				int s;
 				wait(&s);
 			}
-			else {	/* child */
+			else {	
+// child 
 				execv(argv[0], argv);
 			}
 		}
@@ -307,7 +309,7 @@ void shabby_shell(const char * tty_name)
 
 	close(1);
 	close(0);
-}
+} */
 
 /*****************************************************************************
  *                                Init
@@ -316,54 +318,1238 @@ void shabby_shell(const char * tty_name)
  * The hen.
  * 
  *****************************************************************************/
+
 void Init()
 {
-	int fd_stdin  = open("/dev_tty0", O_RDWR);
-	assert(fd_stdin  == 0);
-	int fd_stdout = open("/dev_tty0", O_RDWR);
-	assert(fd_stdout == 1);
+	 //0号终端
+    char tty_name[] = "/dev_tty0";
+    char username[128];
+    char password[128];
+    int fd;
 
-	printf("Init() is running ...\n");
+    int isLogin = 0;
 
-	/* extract `cmd.tar' */
-	untar("/cmd.tar");
-			
+    char rdbuf[128];
+    char cmd[128];
+    char arg1[128];
+    char arg2[128];
+    char buf[1024];
 
-	char * tty_list[] = {"/dev_tty1", "/dev_tty2"};
+    int fd_stdin  = open(tty_name, O_RDWR);
+    assert(fd_stdin  == 0);
+    int fd_stdout = open(tty_name, O_RDWR);
+    assert(fd_stdout == 1);
 
-	int i;
-	for (i = 0; i < sizeof(tty_list) / sizeof(tty_list[0]); i++) {
-		int pid = fork();
-		if (pid != 0) { /* parent process */
-			printf("[parent is running, child pid:%d]\n", pid);
-		}
-		else {	/* child process */
-			printf("[child is running, pid:%d]\n", getpid());
-			close(fd_stdin);
-			close(fd_stdout);
-			
-			shabby_shell(tty_list[i]);
-			assert(0);
-		}
-	}
+    printl("OS v1.0.0 tty0\n\n");
 
-	while (1) {
-		int s;
-		int child = wait(&s);
-		printf("child (%d) exited with status: %d.\n", child, s);
-	}
+    clearArr(__path,128*128);
+    __pathCount = 0;
 
-	assert(0);
+    while (1) {
+        //login(fd_stdin, fd_stdout, &isLogin, username, password);
+        //必须要清空数组
+        clearArr(rdbuf, 128);
+        clearArr(cmd, 128);
+        clearArr(arg1, 128);
+        clearArr(arg2, 128);
+        clearArr(buf, 1024);
+
+        int t = 0;
+        printl("%s@OS:~", username);
+        for(t=0;t<__pathCount;t++){
+            printl("/%s", __path[t]);
+        }
+        printl("$ ");
+
+        int r = read(fd_stdin, rdbuf, 128);
+
+        if (strcmp(rdbuf, "") == 0)
+            continue;
+
+        //解析命令
+        int i = 0;
+        int j = 0;
+        while(rdbuf[i] != ' ' && rdbuf[i] != 0)
+        {
+            cmd[i] = rdbuf[i];
+            i++;
+        }
+        i++;
+        while(rdbuf[i] != ' ' && rdbuf[i] != 0)
+        {
+            arg1[j] = rdbuf[i];
+            i++;
+            j++;
+        }
+        i++;
+        j = 0;
+        while(rdbuf[i] != ' ' && rdbuf[i] != 0)
+        {
+            arg2[j] = rdbuf[i];
+            i++;
+            j++;
+        }
+        
+        //清空缓冲区
+        rdbuf[r] = 0;
+
+        if (strcmp(cmd, "menu") == 0)
+        {
+            menu();
+        }
+        else if (strcmp(cmd, "2048") == 0)
+        {
+            /*TTT(fd_stdin, fd_stdout);*/
+            game(fd_stdin);
+        }
+	else if (strcmp(cmd, "Gobang") == 0)
+        {
+            /*TTT(fd_stdin, fd_stdout);*/
+            Gobang(fd_stdin);
+        }
+        else if (strcmp(cmd, "clear") == 0)
+        {
+            printTitle();
+        }
+        else if (strcmp(cmd, "ls") == 0)
+        {
+            ls();
+        }
+        else if(strcmp(cmd, "cd") == 0)
+        {
+            if(arg1[0] == 0)
+            {
+                clearArr(__path,128*128);
+                __pathCount = 0;
+            }
+            else
+            {
+                strcpy(__path[__pathCount], arg1);
+                __pathCount++;
+            }
+        }
+        else if (strcmp(cmd, "mkdir") == 0)
+        {
+            fd = open_dir(arg1, O_CREAT | O_RDWR);
+            if (fd == -1)
+            {
+                printl("Failed to create directory! Please check the directory!\n");
+                continue ;
+            }
+            write(fd, buf, 1);
+            printl("Directory created: %s (fd %d)\n", arg1, fd);
+            close(fd);
+        }
+        else if (strcmp(cmd, "touch") == 0)
+        {
+            fd = open(arg1, O_CREAT | O_RDWR);
+            if (fd == -1)
+            {
+                printl("Failed to create file! Please check the filename!\n");
+                continue ;
+            }
+            write(fd, buf, 1);
+            printl("File created: %s (fd %d)\n", arg1, fd);
+            close(fd);
+        }
+        else if (strcmp(cmd, "cat") == 0)
+        {
+            fd = open(arg1, O_RDWR);
+            if (fd == -1)
+            {
+                printl("Failed to open file! Please check the filename!\n");
+                continue ;
+            }
+            /*if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            read(fd, buf, 1024);
+            close(fd);
+            printl("%s\n", buf);
+        }
+        else if (strcmp(cmd, "vim") == 0)
+        {
+            fd = open(arg1, O_RDWR);
+            if (fd == -1)
+            {
+                printl("Failed to open file! Please check the filename!\n");
+                continue ;
+            }
+            /*if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            int tail = read(fd_stdin, rdbuf, 128);
+            rdbuf[tail] = 0;
+
+            write(fd, rdbuf, tail+1);
+            close(fd);
+        }
+        else if (strcmp(cmd, "del") == 0)
+        {
+            /*
+            if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            int result;
+            result = unlink(arg1);
+            if (result == 0)
+            {
+                printl("File deleted!\n");
+                continue;
+            }
+            else
+            {
+                printl("Failed to delete file! Please check the filename!\n");
+                continue;
+            }
+        }
+        else if (strcmp(cmd, "cp") == 0)
+        {
+            //首先获得文件内容
+            fd = open(arg1, O_RDWR);
+            if (fd == -1)
+            {
+                printf("File not exists! Please check the filename!\n");
+                continue ;
+            }
+         /*   if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            int tail = read(fd, buf, 1024);
+            close(fd);
+            
+            fd = open(arg2, O_CREAT | O_RDWR);
+            if (fd == -1)
+            {
+                //文件已存在，什么都不要做
+            }
+            else
+            {
+                //文件不存在，写一个空的进去
+                char temp[1024];
+                temp[0] = 0;
+                write(fd, temp, 1);
+                close(fd);
+            }
+            //给文件赋值
+            fd = open(arg2, O_RDWR);
+            write(fd, buf, tail+1);
+            close(fd);
+         
+        }
+        else if (strcmp(cmd, "mv") == 0)
+        {
+            //首先获得文件内容
+            fd = open(arg1, O_RDWR);
+            if (fd == -1)
+            {
+                printl("File not exists! Please check the filename!\n");
+                continue ;
+            }
+            /*if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            int tail = read(fd, buf, 1024);
+            close(fd);
+            
+            fd = open(arg2, O_CREAT | O_RDWR);
+            if (fd == -1)
+            {
+                //文件已存在，什么都不要做
+            }
+            else
+            {
+                //文件不存在，写一个空的进去
+                char temp[1024];
+                temp[0] = 0;
+                write(fd, temp, 1);
+                close(fd);
+            }
+            //给文件赋值
+            fd = open(arg2, O_RDWR);
+            write(fd, buf, tail+1);
+            close(fd);
+            //最后删除文件
+            unlink(arg1);
+        }
+        else if (strcmp(cmd, "useradd") == 0)
+        {
+            //doUserAdd(arg1, arg2);
+        }
+        else if (strcmp(cmd, "userdel") == 0)
+        {
+            //doUserDel(arg1);
+        }
+        else if (strcmp(cmd, "passwd") == 0)
+        {
+            //doPassWd(username, password, fd_stdin);
+        }
+        else if (strcmp(cmd, "logout") == 0)
+        {
+            isLogin = 0;
+            clearArr(username, 128);
+            clearArr(password, 128);
+
+            clear();
+            printl("OS v1.0.0 tty0\n\n");
+        }
+        else if (strcmp(cmd, "untar") == 0)
+        {
+            fd = open(arg1, O_RDWR);
+            if (fd == -1)
+            {
+                printl("File not exists! Please check the filename!\n");
+                continue ;
+            }
+            /*if (!verifyFilePass(arg1, fd_stdin))
+            {
+                printf("Authorization failed\n");
+                continue;
+            }*/
+            untar(arg1);
+        }
+        else if(strcmp(cmd,"calculator") == 0)
+        {
+            char exp[100];
+            char cal[200];
+
+            while(1)
+            {
+                clearArr(exp,100);
+                clearArr(cal,200);
+
+                printl(">");
+                read(fd_stdin, exp,100);
+                if(strcmp(exp,"q") == 0)
+                    break;
+                trans(exp,cal);
+                printl("%d\n",calculate(cal));
+            }
+        }
+        else
+            printl("Command not found, please check!\n");
+    }
+
 }
 
+int ls()
+{
+    MESSAGE msg;
+    msg.type = LS;
 
-/*======================================================================*
-                               TestA
- *======================================================================*/
+    send_recv(BOTH, TASK_FS, &msg);
+
+    return msg.RETVAL;
+}
+
+int open_dir(const char *pathname, int flags)
+{
+	MESSAGE msg;
+
+	msg.type	= OPEN_DIR;
+
+	msg.PATHNAME	= (void*)pathname;
+	msg.FLAGS	= flags;
+	msg.NAME_LEN	= strlen(pathname);
+
+	send_recv(BOTH, TASK_FS, &msg);
+	assert(msg.type == SYSCALL_RET);
+
+	return msg.FD;
+}
+
+/*****************************************************************************
+                           Command Analysis and Execution
+ *****************************************************************************/
 void TestA()
 {
 	for(;;);
 }
+
+void printTitle()
+{
+    clear();
+
+    disp_pos = 0;
+    printl("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    printl(" へ　　　　　／| \n" ); 
+    printl("　/＼7　　∠＿/ \n");
+    printl(" /　│　　 ／　／ \n");
+    printl("│　Z ＿,＜　／　　 /`ヽ \n");
+    printl("│　　　　　ヽ　　 /　　〉 \n");
+    printl(" Y　　　　　`　 /　　/ \n");
+    printl("　ｲ●　､　●　　⊂⊃〈　　/ \n");
+    printl("　()　 >　　　　|　＼〈 \n");
+    printl("　>ｰ ､_　 ィ　 │ ／／ \n");
+    printl(" / へ　　 /　ﾉ＜| ＼＼ \n");
+    printl(" ヽ_ﾉ　　(_／　 │／／ \n");
+    printl("　7　　　　　　　|／ \n");
+    printl("　＞―r￣￣`ｰ―＿ \n");
+    printl("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    printl("\n\n");
+
+}
+
+void clear()
+{
+    clear_screen(0,console_table[current_console].cursor);
+    console_table[current_console].crtc_start = 0;
+    console_table[current_console].cursor = 0;
+}
+
+void clearArr(char *arr, int length)
+{
+    int i;
+    for (i = 0; i < length; i++)
+        arr[i] = 0;
+}
+
+/*void tar(char *path, int fd_stdin)
+{
+    char name[128] = {0};
+
+    char command[512] = {0};
+
+    strcat(command, "tar -cf ");
+
+    printl("Please input the tar file name: ");
+    read(fd_stdin, name, 128);
+
+    if (strcmp(name, "") == 0)
+    {
+        printl("Blank!\n");
+        return;
+    }
+    strcat(command, name);
+    strcat(command, ".tar ");
+    strcat(command, path);
+    //调用shell进行压缩
+    system(command);
+}*/
+
+#define MAXSIZE 100  
+typedef struct stack
+{
+    int top;
+    char s[MAXSIZE];
+}stack;
+typedef struct numstack
+{
+    int top;
+    int num[MAXSIZE];
+}numstack;
+void gettop(stack s, char *outch)
+{
+    *outch = s.s[s.top];
+}
+int IntoStack(stack *st, char in)
+{
+    if (st->top == MAXSIZE - 1)return -1;
+    st->s[(st->top)++] = in;
+    return 0;
+}
+int OutStack(stack *st, char *out)
+{
+    if (st->top == 0)return -1;
+    *out = st->s[--(st->top)];
+    return 0;
+}
+int  trans(char *exp, char *cal)
+{
+    char ch, temp;
+    int i = 0, j = 0;
+    ch = exp[0];
+    stack st;
+    st.top = 0;
+    while (ch != '\0')
+    {
+        switch (ch)
+        {
+        case '(':
+            IntoStack(&st, ch);
+            break;
+        case '+':
+        case '-':
+            while (st.top != 0 && st.s[st.top - 1] != '(')
+            {
+                OutStack(&st, &temp);
+                cal[j++] = temp;
+            }
+            IntoStack(&st, ch);
+            break;
+        case '*':
+        case '/':
+            while (st.top != 0 && st.s[st.top - 1] != '(' &&
+                (st.s[st.top - 1] == '*' || st.s[st.top - 1] == '/'))
+            {
+                OutStack(&st, &temp);
+                cal[j++] = temp;
+            }
+            IntoStack(&st, ch);
+            break;
+        case ')':
+            while (st.top != 0)
+            {
+                OutStack(&st, &temp);
+                if (temp != '(')
+                    cal[j++] = temp;
+                else
+                    break;
+            }
+            break;
+        case ' ':
+            break;
+        default:
+            while (ch >= '0'&&ch <= '9')
+            {
+                cal[j++] = ch;
+                ch = exp[++i];
+            }
+            i--;
+            cal[j++] = '#';
+            break;
+        }
+        ch = exp[++i];
+    }
+    while (st.top != 0)
+    {
+        cal[j++] = st.s[--(st.top)];
+    }
+    cal[j] = '\0';
+    return 0;
+}
+int calculate(char exp[])
+{
+    int i = 0, temp, a, b;
+    numstack numst;
+    numst.top = 0;
+    while (exp[i] != '\0')
+    {
+        temp = 0;
+        while (exp[i] >= '0'&&exp[i] <= '9')
+        {
+            temp = temp * 10 + (exp[i++] - '0');
+        }
+        if (exp[i] == '#')
+        {
+            i++;
+            numst.num[numst.top++] = temp;
+        }
+        else
+        {
+            b = numst.num[--(numst.top)];
+            a = numst.num[--(numst.top)];
+            switch (exp[i++])
+            {
+            case '+': numst.num[(numst.top)++] = a + b; break;
+            case '-':numst.num[(numst.top)++] = a - b; break;
+            case '*':numst.num[(numst.top)++] = a*b; break;
+            case '/':numst.num[(numst.top)++] = a / b; break;
+            }
+        }
+    }
+    return numst.num[--(numst.top)];
+}
+
+
+/*****************************************************************************
+ *                                Command List
+ *****************************************************************************/
+
+void menu()
+{
+    printf("=============================================================================\n");
+    printf("\n");
+    printf("Command List\n");
+    printf("\n");
+    printf("1.  menu                           : Command menu\n");
+    printf("2.  clear                          : Clear the screen\n");
+    printf("3.  ls                             : List files under current path\n");
+    printf("4.  cd        [path]               : Change current directory to input one\n");
+    printf("5.  touch     [file]               : Create a new file named after the input\n");
+    printf("6.  mkdir     [file]               : Create a new directory\n");
+    printf("7.  cat       [file]               : Print the content of the input file\n");
+    printf("8.  vim       [file]               : Modify the content of the input file\n");
+    printf("9.  del       [file]               : Delete a file\n");
+    printf("10. untar     [file]               : Decompress a file compressed in tar format\n");
+    printf("11. cp        [SOURCE] [DEST]      : Copy a file[SOURCE] to new directory[DEST]\n");
+    printf("12. mv        [SOURCE] [DEST]      : Move a file[SOURCE] to new directory[DEST]\n");
+    printf("13. useradd   [USERNAME] [PASSWORD]: Add a new user\n");
+    printf("14. userdel   [USERNAME]           : Delete a user\n");
+    printf("15. passwd    [USERNAME]           : Change your user password\n");
+    printf("16. logout                         : Logout\n");
+    printf("17. 2048                           : 2048 Game\n");
+    printf("18. Gobang                         : Gobang(five-in-a-row) Game\n");
+    printf("19. calculator                     : Calculator\n");
+    printf("\n");
+    printf("==============================================================================\n");
+}
+
+/*****************************************************************************
+ *                                Game Lib(2048 and gobang)
+ *****************************************************************************/
+
+//2048
+unsigned int _seed2 = 0xDEADBEEF;
+
+void srand(unsigned int seed){
+    _seed2 = seed;
+}
+
+int rand() {
+    unsigned int next = _seed2;
+    unsigned int result;
+
+    next *= 1103515245;
+    next += 12345;
+    result = ( unsigned int  ) ( next / 65536 ) % 2048;
+
+    next *= 1103515245;
+    next += 12345;
+    result <<= 10;
+    result ^= ( unsigned int ) ( next / 65536 ) % 1024;
+
+    next *= 1103515245;
+    next += 12345;
+    result <<= 10;
+    result ^= ( unsigned int ) ( next / 65536 ) % 1024;
+
+    _seed2 = next;
+
+    return result;
+}
+
+
+#define SIZE 4
+int square[SIZE][SIZE];
+int row[SIZE*SIZE];
+int col[SIZE*SIZE];
+
+//generate 2 or 4 at random place in the square, cnt represents for count of blank area
+void generateNumber(int cnt)
+{
+	//int num = rand() / double(RAND_MAX) < 0.9 ? 2 : 4;
+	int pos = rand() % cnt;
+	square[row[pos]][col[pos]] = 2<<(rand()%2);
+}
+
+int recordBlank()
+{
+	int cnt=0;
+	int i = 0, j = 0;
+	for (i = 0; i < SIZE; ++i){
+		for (j = 0; j < SIZE; ++j){
+			if (square[i][j] == 0){
+				row[cnt] = i;
+				col[cnt] = j;
+				++cnt;
+			}
+		}
+	}
+	return cnt;
+}
+
+//flag=false means the square has not been changed
+int moveDown()
+{
+	int block[SIZE][SIZE];
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j)
+			block[i][j] = 1;
+	}
+	int flag = 0;
+	for (i = 1; i < SIZE; ++i){
+		for (j = 0; j < SIZE; ++j){
+			if (square[i][j]==0)
+				continue;
+			int tmp = i - 1;
+			for (; tmp >= 0 && square[tmp][j] == 0; --tmp);
+
+			if (tmp < 0 || block[tmp][j]==0 || square[tmp][j] != square[i][j]){
+				square[tmp + 1][j] = square[i][j];
+				if (tmp + 1 != i){
+					square[i][j] = 0;
+					flag = 1;
+				}
+			}
+
+			else if (square[tmp][j] == square[i][j]&&block[tmp][j]==1){
+				square[tmp][j] *= 2;
+				square[i][j] = 0;
+				block[tmp][j] = 0;
+				flag = 1;
+			}
+		}
+	}
+	return flag;
+}
+
+int moveUp()
+{
+	int block[SIZE][SIZE];
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j)
+			block[i][j] = 1;
+	}
+	int flag = 0;
+	for (i = SIZE - 2; i >= 0;--i){
+		for (j = 0; j < SIZE; ++j){
+			if (square[i][j] == 0)
+				continue;
+			int tmp = i + 1;
+			for (; tmp <SIZE && square[tmp][j] == 0; ++tmp);
+			if (tmp >= SIZE || block[tmp][j]==0|| square[tmp][j] != square[i][j])
+				square[tmp - 1][j] = square[i][j];
+			else if (square[tmp][j] == square[i][j] && block[tmp][j]==1){
+				square[tmp][j] *= 2;
+				square[i][j] = 0;
+				block[tmp][j] = 0;
+				flag = 1;
+			}
+
+			if (tmp - 1 != i){
+				square[i][j] = 0;
+				flag = 1;
+			}
+
+		}
+	}
+	return flag;
+}
+
+int moveLeft()
+{
+	int block[SIZE][SIZE];
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j)
+			block[i][j] = 1;
+	}
+	int flag = 0;
+	for (j = 1; j < SIZE; ++j){
+		for (i = 0; i < SIZE; ++i){
+			if (square[i][j] == 0)
+				continue;
+			int tmp = j - 1;
+			for (; tmp >= 0 && square[i][tmp] == 0; --tmp);
+
+			if (tmp < 0 || block[i][tmp]==0 || square[i][tmp] != square[i][j]){
+				square[i][tmp + 1] = square[i][j];
+				if (tmp + 1 != j){
+					square[i][j] = 0;
+					flag = 1;
+				}
+			}
+			else if (square[i][tmp] == square[i][j] && block[i][tmp]==1){
+				square[i][tmp] *= 2;
+				square[i][j] = 0;
+				block[i][tmp] = 0;
+				flag = 1;
+			}
+		}
+	}
+	return flag;
+}
+
+int moveRight()
+{
+	int block[SIZE][SIZE];
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j)
+			block[i][j] = 1;
+	}
+	int flag = 0;
+	for (j = SIZE - 2; j >= 0; --j){
+		for (i = 0; i < SIZE; ++i){
+			if (square[i][j] == 0)
+				continue;
+			int tmp = j + 1;
+			for (; tmp < SIZE && square[i][tmp] == 0; ++tmp);
+
+			if (tmp >= SIZE || block[i][tmp]==0 || square[i][tmp] != square[i][j]){
+				square[i][tmp - 1] = square[i][j];
+				if (tmp - 1 != j){
+					square[i][j] = 0;
+					flag = 1;
+				}
+			}
+			else if (square[i][tmp] == square[i][j] && block[i][tmp]==1){
+				square[i][tmp] *= 2;
+				square[i][j] = 0;
+				block[i][tmp] = 0;
+				flag = 1;
+			}
+
+
+		}
+	}
+	return flag;
+}
+
+void printSquare()
+{
+	printf("----------------------\n");
+	int i = SIZE - 1, j = 0;
+	for (i = SIZE-1; i >=0; --i){
+		printf("|");
+		for (j = 0; j < SIZE; ++j){
+			if (square[i][j] == 0)
+				printf("    *");
+			else
+				printf("%5d", square[i][j]);
+		}
+		printf("|");
+		printf("\n\n");
+	}
+	printf("----------------------\n");
+}
+
+void initialGame()
+{
+	int cnt = 0;
+	cnt = recordBlank();
+	generateNumber(cnt);
+	cnt = recordBlank();
+	generateNumber(cnt);
+}
+
+int gameWin()
+{
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j){
+			if (square[i][j] == 2048)
+				return 1;
+		}
+	}
+	return 0;
+}
+
+int gameLose()
+{
+	int i = 0, j = 0;
+	for (i=0; i < SIZE; ++i){
+		for (j=0; j < SIZE; ++j){
+			int curr = square[i][j];
+			if ((i > 0 && square[i - 1][j] == curr) || (i < SIZE - 1 && square[i + 1][j] == curr) || 
+				(j>0 && square[i][j - 1] == curr) || (j < SIZE - 1 && square[i][j + 1] == curr))
+				return 0;
+		}
+	}
+	return 1;
+}
+
+int game(int fd_stdin){
+	//clear();
+   	printl("================================game 2048=======================================\n");
+	printl("\n");
+	printl("                    --->      ShuaiB's 2048      <-----\n");
+	printl("\n");
+	printl("                          1. 'W' for move up\n");
+	printl("                          2. 'A' for move left\n");
+	printl("                          3. 'S' for move down\n");
+	printl("                          4. 'D' for move right\n");
+	printl("                          5. 'Q' for quit\n");
+	printl("\n");
+	printl("================================================================================\n");
+	initialGame();
+	printSquare();
+	//char direction;
+	int cnt = 0;
+	int flag = 0;
+	int result = 0;
+	char keys[128];
+	while (1){
+		//scanf("%c", &direction);
+		clearArr(keys,128);
+		read(fd_stdin, keys, 128);
+
+		if (strcmp(keys, "a") == 0)
+            	{
+                flag = moveLeft();
+            	}
+            	else if (strcmp(keys, "s") == 0)
+            	{
+                flag = moveDown();
+            	}
+            	else if (strcmp(keys, "w") == 0)
+            	{
+                flag = moveUp();
+            	}
+            	else if (strcmp(keys, "d") == 0)
+            	{
+                flag = moveRight();
+            	}
+            	else if (strcmp(keys, "q") == 0)
+            	{
+                return 0;
+            	}
+            	else
+            	{
+            	    printl("w for move up, a for move left, s for move down, d for move right, q for quit, ? for help\n");
+            	    continue;
+            	}
+		cnt = recordBlank();
+		if (flag==1&&cnt>0)
+			generateNumber(cnt);
+		cnt -= 1;
+		if (cnt == 0 && gameLose()){
+			printl("Oops, game over...\n");
+			return 0;
+		}
+		
+		printSquare();
+		result = gameWin();
+		if (result == 1){
+			printl("Congratulations! You win!\n");
+			return 0;
+		}
+	}
+	
+	return 0;
+}
+
+//Gobang
+static char ch[11][4] = {"", "", "", "", "", "", "", "", "", "*", "o"};//玩家黑子9， ai白子10
+char Default[10][10] = {
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    3, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    6, 7, 7, 7, 7, 7, 7, 7, 7, 8};
+char chessBoard[10][10];
+int playerBoard[10][10] = {}, aiBoard[10][10] = {};
+int ai = 0, totalCount = 0, maxX = 0, maxY = 0;
+int Score[10][10], mark[10][10];
+
+void assign(char assign[10][10], char assigned[10][10]){
+    for (int i = 0; i<10; i++) {
+        for (int j = 0; j < 10; j++) {
+            assigned[i][j] = assign[i][j];
+        }
+    }
+}
+
+void Empty(){
+    memset(playerBoard,0,sizeof(playerBoard));
+    memset(aiBoard,0,sizeof(aiBoard));
+    memset(Score, 0, sizeof(Score));
+    memset(mark, 0, sizeof(mark));
+    assign(Default, chessBoard);
+}
+
+void PrintChessBoard(int x, int y, int init, int ai, int pl){
+    if (init == 1) {
+        assign(Default, chessBoard);
+        Empty();
+    }else{
+        if(ai == 1 && pl == 0){
+            chessBoard[x][y] = 10;
+        }
+        if(pl == 1 && ai == 0){
+            chessBoard[x][y] = 9;
+        }
+    }
+    printf("  ");
+    for (int i = 0; i<11; i++){
+        for(int j = 0; j<11; j++){
+            if (i == 0 && j!=0) {
+                printl("%d ", j-1);
+            }
+            else if(i != 0 && j == 0){
+                printl("%d ", i-1);
+            }
+            else if(i != 0 && j != 0){
+                printl("%s ", ch[chessBoard[i-1][j-1]]);
+            }
+        }
+        printl("\n");
+    }
+    
+}
+
+void Start(){
+    printl("*******************************game FiveInRow*********************************");
+    printl("\n\n");
+    printl("                           --->    MENU    <---                                   \n");
+    printl("                           1. '*' for YOU and 'o' for ROBOT\n");
+    printl("                           2. Enter 'E' and enter 'xy' to enter the cordinates \n");
+    printl("                           3. Enter 'M' for menu\n");
+    printl("                           4. Enter 'R' for restart\n");
+    printl("                           5. Enter 'Q' for quit\n");
+    printl("\n\n");
+    Empty();
+}
+
+
+
+int checkLine(int Cx, int Cy, int isPlayer, int Count){
+    int w=1,x=1,y=1,z=1,i;//累计横竖正斜反邪四个方向的连续相同棋子数目
+    for(i=1;i<5;i++){
+        if(Cy+i<=MAXIMUS){
+            if ((isPlayer&&chessBoard[Cx][Cy+i]==9)||(!isPlayer&&chessBoard[Cx][Cy+i]==10)) {
+                w++;
+            }
+            else break;
+        }
+        else break;
+    }
+    for(i=1;i<5;i++){//XIA
+        if(Cy-i>=0){
+            if ((isPlayer&&chessBoard[Cx][Cy-i]==9)||(!isPlayer&&chessBoard[Cx][Cy-i]==10)) {
+                w++;
+            }
+            else break;
+        }
+        else break;
+    }
+    if(w>=5)
+        return 1;
+    for(i=1;i<5;i++){//you
+        if(Cx+i<=MAXIMUS){
+            if ((isPlayer&&chessBoard[Cx+i][Cy]==9)||(!isPlayer&&chessBoard[Cx+i][Cy]==10)) {
+                x++;
+            }
+            else break;
+        }
+        else break;
+    }
+    for(i=1;i<5;i++){//zuo
+        if(Cx-i>=0){
+            if ((isPlayer&&chessBoard[Cx+i][Cy]==9)||(!isPlayer&&chessBoard[Cx+i][Cy]==10)) {
+                x++;
+            }
+            else break;
+        }
+        else break;
+    }
+    if(x>=5)
+        return 1;//youxia
+    for(i=1;i<5;i++){//you
+        if(Cx+i<=MAXIMUS&&Cy+i<=MAXIMUS){
+            if ((isPlayer&&chessBoard[Cx+i][Cy+i]==9)||(!isPlayer&&chessBoard[Cx+i][Cy+i]==10)) {
+                y++;
+            }
+            else break;
+        }
+        else break;
+    }
+    for(i=1;i<5;i++){//zuoshang
+        if(Cx-i>=0&&Cy-i>=0){
+            if ((isPlayer&&chessBoard[Cx-i][Cy-i]==9)||(!isPlayer&&chessBoard[Cx-i][Cy-i]==10)) {
+                y++;
+            }
+            else break;
+        }
+        else break;
+    }
+    if(y>=5)
+        return 1;//若果达到5个则判断当前走子玩家为赢家
+    for(i=1;i<5;i++){//youshang
+        if(Cx+i<=MAXIMUS && Cy-i>=0){
+            if ((isPlayer&&chessBoard[Cx+i][Cy-i]==9)||(!isPlayer&&chessBoard[Cx+i][Cy-i]==10)) {
+                z++;
+            }
+            else break;
+        }
+        else break;
+    }
+    for(i=1;i<5;i++){//zuoxia
+        if(Cx-i>=0&&Cy+i<=MAXIMUS){
+            if ((isPlayer&&chessBoard[Cx-i][Cy+i]==9)||(!isPlayer&&chessBoard[Cx-i][Cy+i]==10)) {
+                z++;
+            }
+            else break;
+        }
+        else break;
+    }
+    if(z>=5)
+        return 1;//若果达到5个则判断当前走子玩家为赢家
+    
+    
+    return 0;
+}
+
+void Robot(){
+    memset(Score, 0, sizeof(Score));
+    int empty = 0, player = 0, ai = 0, a = 0, b = 0;
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+            if (chessBoard[i][j] != 9 && chessBoard[i][j] != 10) {
+                for (int a = -1; a < 2; a++) {
+                    for (int b = -1; b < 2; b++) {
+                        if (chessBoard[a][b] == 9) {
+                            player++;
+                        }else if(chessBoard[a][b] == 10){
+                            ai++;
+                        }else{
+                            empty++;
+                        }
+                    }
+                }
+                
+            
+                if (player == 1) {
+                    Score[i][j] += 1;
+                }
+                else if(player == 2){
+                    if (empty == 1) {
+                        Score[i][j] += 5;
+                    }else{
+                        Score[i][j] += 10;
+                    }
+                }
+                else if(player == 3){
+                    if (empty == 1) {
+                        Score[i][j] += 20;
+                    }else if(empty >= 2){
+                        Score[i][j] += 100;
+                    }
+                }
+                else if (player >= 4){
+                    Score[i][j] += 1000;
+                }
+                
+                if (ai == 0){
+                    Score[i][j] += 1;
+                }
+                else if (ai == 1){
+                    Score[i][j] += 2;
+                }
+                else if (ai == 2){
+                    if (empty == 1) {
+                        Score[i][j] += 8;
+                    }
+                    else if (empty >= 2){
+                        Score[i][j] += 30;
+                    }
+                }
+                else if (ai == 3){
+                    if (empty == 1) {
+                        Score[i][j] += 50;
+                    }
+                    else if (empty >= 2){
+                        Score[i][j] += 200;
+                    }
+                }
+                else if (ai >= 4){
+                    if (empty >= 1) {
+                        Score[i][j] += 10000;
+                    }
+                }
+            }
+            int max = 0;
+            for (a = 0; a < 10; a++) {
+                for (b = 0; b < 10; b++) {
+                    if (Score[a][b] > max){
+                        max = Score[a][b];
+                        maxY = a;
+                        maxY = b;
+                    }
+                }
+            }
+            //chessBoard[a][b] = 10;
+        }
+    }
+    PrintChessBoard(maxX, maxY, 0, 1, 0);
+}
+
+int Gobang(int fd_stdin) {
+    Start();
+    PrintChessBoard(-1, -1, 1, ai, 0);
+    char in = 'M';
+    int x = 0, y = 0;
+    char keys[128];
+
+    while (1) {
+        //printf("%c", in);
+		clearArr(keys,128);
+		read(fd_stdin, keys, 128);
+
+		if (strcmp(keys, "M") == 0)
+            	{
+                	printl("\n\n");
+                	printl("                           --->    MENU    <---                                   \n");
+                	printl("                           1. '*' for YOU and 'o' for ROBOT\n");
+                	printl("                           2. 'E' for enter the cordinates 'x' 'ENTER' 'y'");
+                	printl("                           3. 'M' for menu\n");
+                	printl("                           4. 'R' for restart\n");
+                	printl("                           5. 'Q' for quit\n");
+                	printl("\n\n");
+            	}
+            	else if (strcmp(keys, "Q") == 0)
+            	{
+                	return 0;
+            	}
+            	else if (strcmp(keys, "R") == 0)
+            	{
+                	Empty();
+                	PrintChessBoard(-1, -1, 1, ai, 0);
+            	}
+            	else if (strcmp(keys, "E") == 0)
+            	{
+		    read(fd_stdin, keys, 128);
+		    x = keys[0];
+		    read(fd_stdin, keys, 128);
+		    y = keys[0];
+		    
+                    if (x < -1 || y <-1 || chessBoard[x][y] == 9 || chessBoard[x][y] == 10 || x > 9 || y > 9){
+                    printl("WRONG CORDINATES!\n");
+                    
+                }
+                playerBoard[x][y] = 1;
+                printl("Your turn: \n");
+                PrintChessBoard(x, y, 0, 0, 1);
+                if (checkLine(x, y, 1, 1) == 1) {
+                    printl("YOU WIN!!!!!!!!\n");
+                    Start();
+                    return 0;
+                }
+                printl("Robot's turn: \n");
+                Robot();
+                if (checkLine(maxX, maxY, 0, 1) == 1) {
+                    printl("YOU LOSE ^^!!!!!!!!\n");
+                    Start();
+                }
+            	}
+            	else
+		{
+			printl("                           1. '*' for YOU and 'o' for ROBOT\n");
+                	printl("                           2. 'E' for enter the cordinates 'x' 'ENTER' 'y'\n");
+                	printl("                           3. 'M' for menu\n");
+                	printl("                           4. 'R' for restart\n");
+                	printl("                           5. 'Q' for quit\n");
+                	printl("\n\n");
+		}
+        }
+    
+    
+    
+    return 0;
+}
+
+
+
+
+
 
 /*======================================================================*
                                TestB

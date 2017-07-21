@@ -19,8 +19,8 @@
 
 PRIVATE void block(struct proc* p);
 PRIVATE void unblock(struct proc* p);
-PRIVATE int  msg_send(struct proc* current, int dest, MESSAGE* m);
-PRIVATE int  msg_receive(struct proc* current, int src, MESSAGE* m);
+PUBLIC int  msg_send(struct proc* current, int dest, MESSAGE* m);
+PUBLIC int  msg_receive(struct proc* current, int src, MESSAGE* m);
 PRIVATE int  deadlock(int src, int dest);
 
 /*****************************************************************************
@@ -102,6 +102,7 @@ PUBLIC int sys_sendrec(int function, int src_dest, MESSAGE* m, struct proc* p)
 
 	return 0;
 }
+
 
 /*****************************************************************************
  *				  ldt_seg_linear
@@ -248,7 +249,7 @@ PRIVATE int deadlock(int src, int dest)
  * 
  * @return Zero if success.
  *****************************************************************************/
-PRIVATE int msg_send(struct proc* current, int dest, MESSAGE* m)
+PUBLIC int msg_send(struct proc* current, int dest, MESSAGE* m)
 {
 	struct proc* sender = current;
 	struct proc* p_dest = proc_table + dest; /* proc dest */
@@ -328,7 +329,7 @@ PRIVATE int msg_send(struct proc* current, int dest, MESSAGE* m)
  * 
  * @return  Zero if success.
  *****************************************************************************/
-PRIVATE int msg_receive(struct proc* current, int src, MESSAGE* m)
+PUBLIC int msg_receive(struct proc* current, int src, MESSAGE* m)
 {
 	struct proc* p_who_wanna_recv = current; /**
 						  * This name is a little bit

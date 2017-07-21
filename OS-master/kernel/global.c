@@ -40,10 +40,10 @@ PUBLIC	struct task	user_proc_table[NR_NATIVE_PROCS] = {
 	{TestA,  STACK_SIZE_TESTA, "TestA"},
 	{TestB,  STACK_SIZE_TESTB, "TestB"},
 	{TestC,  STACK_SIZE_TESTC, "TestC"}};
-/* PUBLIC	struct task	user_proc_table[NR_PROCS] = { */
-/* 	{TestA, STACK_SIZE_TESTA, "TestA"}, */
-/* 	{TestB, STACK_SIZE_TESTB, "TestB"}, */
-/* 	{TestC, STACK_SIZE_TESTC, "TestC"}}; */
+ /*PUBLIC	struct task	user_proc_table[NR_PROCS] = { 
+ 	{TestA, STACK_SIZE_TESTA, "TestA"}, 
+ 	{TestB, STACK_SIZE_TESTB, "TestB"}, 
+ 	{TestC, STACK_SIZE_TESTC, "TestC"}}; */
 
 PUBLIC	char		task_stack[STACK_SIZE_TOTAL];
 
@@ -95,4 +95,7 @@ PUBLIC	char *		logbuf		= (char*)0x800000;
 PUBLIC	const int	LOGBUF_SIZE	= 0x100000;
 PUBLIC	char *		logdiskbuf	= (char*)0x900000;
 PUBLIC	const int	LOGDISKBUF_SIZE	= 0x100000;
+
+PUBLIC char __path[128][128];
+PUBLIC int __pathCount;
 

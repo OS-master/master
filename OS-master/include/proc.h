@@ -37,7 +37,7 @@ struct proc {
         int ticks;                 /* remained ticks */
         int priority;
 
-	/* u32 pid;                   /\* process id passed in from MM *\/ */
+	 u32 pid;                   /* process id passed in from MM */ 
 	char name[16];		   /* name of the process */
 
 	int  p_flags;              /**
@@ -81,7 +81,7 @@ struct task {
 /* Number of tasks & processes */
 #define NR_TASKS		5
 #define NR_PROCS		32
-#define NR_NATIVE_PROCS		4
+#define NR_NATIVE_PROCS		3
 #define FIRST_PROC		proc_table[0]
 #define LAST_PROC		proc_table[NR_TASKS + NR_PROCS - 1]
 

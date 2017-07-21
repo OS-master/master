@@ -36,23 +36,39 @@ PUBLIC int do_unlink()
 {
 	char pathname[MAX_PATH];
 
+	memset(pathname, 0, sizeof(pathname));
+	int lenn = 0;
+	int sc = 0;
+	int src = fs_msg.source;
+	int name_len = fs_msg.NAME_LEN;
+	for(sc = 0; sc < __pathCount; sc++)
+	{
+	    strcpy(pathname+strlen(pathname), __path[sc]); 
+	    strcpy(pathname+strlen(pathname), "/");
+	}
+	lenn = strlen(pathname);
+	phys_copy((void*)va2la(TASK_FS, pathname + lenn),
+	      (void*)va2la(src, fs_msg.PATHNAME),
+	      name_len);
+	pathname[name_len + lenn] = 0;
+
 	/* get parameters from the message */
-	int name_len = fs_msg.NAME_LEN;	/* length of filename */
-	int src = fs_msg.source;	/* caller proc nr. */
+	/*
+	int src = fs_msg.source;
 	assert(name_len < MAX_PATH);
 	phys_copy((void*)va2la(TASK_FS, pathname),
 		  (void*)va2la(src, fs_msg.PATHNAME),
 		  name_len);
-	pathname[name_len] = 0;
+	pathname[name_len] = 0;*/
 
 	if (strcmp(pathname , "/") == 0) {
-		printl("{FS} FS:do_unlink():: cannot unlink the root\n");
+		printl("FS:do_unlink():: cannot unlink the root\n");
 		return -1;
 	}
 
 	int inode_nr = search_file(pathname);
 	if (inode_nr == INVALID_INODE) {	/* file not found */
-		printl("{FS} FS::do_unlink():: search_file() returns "
+		printl("FS::do_unlink():: search_file() returns "
 			"invalid inode: %s\n", pathname);
 		return -1;
 	}
@@ -64,15 +80,17 @@ PUBLIC int do_unlink()
 
 	struct inode * pin = get_inode(dir_inode->i_dev, inode_nr);
 
-	if (pin->i_mode != I_REGULAR) { /* can only remove regular files */
-		printl("{FS} cannot remove file %s, because "
+	/*
+	if (pin->i_mode != I_REGULAR) { 
+		printl("cannot remove file %s, because "
 		       "it is not a regular file.\n",
 		       pathname);
 		return -1;
 	}
+	*/
 
 	if (pin->i_cnt > 1) {	/* the file was opened */
-		printl("{FS} cannot remove file %s, because pin->i_cnt is %d.\n",
+		printl("cannot remove file %s, because pin->i_cnt is %d.\n",
 		       pathname, pin->i_cnt);
 		return -1;
 	}
