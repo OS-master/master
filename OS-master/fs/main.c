@@ -35,7 +35,7 @@ PRIVATE void read_super_block(int dev);
  *****************************************************************************/
 PUBLIC void task_fs()
 {
-    printl("Task FS begins.\n");
+   // printl("Task FS begins.\n");
 
     init_fs();
 

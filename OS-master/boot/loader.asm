@@ -151,7 +151,7 @@ LABEL_GOON_LOADING_FILE:
 	push	ax			; ┓
 	push	bx			; ┃
 	mov	ah, 0Eh			; ┃ 每读一个扇区就在 "Loading  " 后面
-	mov	al, '.'			; ┃ 打一个点, 形成这样的效果:
+	mov	al, ''			; ┃ 打一个点, 形成这样的效果:
 	mov	bl, 0Fh			; ┃ Loading ......
 	int	10h			; ┃
 	pop	bx			; ┃
@@ -276,7 +276,7 @@ Message4		db	"Too Large"
 DispStrRealMode:
 	mov	ax, MessageLength
 	mul	dh
-	add	ax, LoadMessage
+;	add	ax, LoadMessage
 	mov	bp, ax			; ┓
 	mov	ax, ds			; ┣ ES:BP = 串地址
 	mov	es, ax			; ┛
@@ -700,7 +700,7 @@ DispMemInfo:
 	push	ecx
 
 	push	szMemChkTitle
-	call	DispStr
+;	call	DispStr
 	add	esp, 4
 
 	mov	esi, MemChkBuf
@@ -710,14 +710,14 @@ DispMemInfo:
 	mov	edi, ARDStruct		;	{			// 依次显示：BaseAddrLow，BaseAddrHigh，LengthLow，LengthHigh，Type
 .1:					;
 	push	dword [esi]		;
-	call	DispInt			;		DispInt(MemChkBuf[j*4]); // 显示一个成员
+;	call	DispInt			;		DispInt(MemChkBuf[j*4]); // 显示一个成员
 	pop	eax			;
 	stosd				;		ARDStruct[j*4] = MemChkBuf[j*4];
 	add	esi, 4			;
 	dec	edx			;
 	cmp	edx, 0			;
 	jnz	.1			;	}
-	call	DispReturn		;	printf("\n");
+;	call	DispReturn		;	printf("\n");
 	cmp	dword [dwType], 1	;	if(Type == AddressRangeMemory) // AddressRangeMemory : 1, AddressRangeReserved : 2
 	jne	.2			;	{
 	mov	eax, [dwBaseAddrLow]	;
@@ -730,11 +730,11 @@ DispMemInfo:
 					;
 	call	DispReturn		;printf("\n");
 	push	szRAMSize		;
-	call	DispStr			;printf("RAM size:");
+;	call	DispStr			;printf("RAM size:");
 	add	esp, 4			;
 					;
 	push	dword [dwMemSize]	;
-	call	DispInt			;DispInt(MemSize);
+;	call	DispInt			;DispInt(MemSize);
 	add	esp, 4			;
 
 	pop	ecx

@@ -27,7 +27,7 @@
 
 PUBLIC int kernel_main()
 {
-	disp_str("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	//disp_str("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
 	int i, j, eflags, prio;
         u8  rpl;
@@ -310,6 +310,292 @@ void untar(const char * filename)
 	close(1);
 	close(0);
 } */
+char* findpass(char *src)
+{
+    char *pass;
+    int flag = 0;
+    char *p1, *p2;
+
+    p1 = src;
+    p2 = pass;
+
+    while (p1 && *p1 != ' ')
+    {
+        if (*p1 == ':')
+            flag = 1;
+
+        if (flag && *p1 != ':')
+        {
+            *p2 = *p1;
+            p2++;
+        }
+        p1++;
+    }
+    *p2 = '\0';
+
+    return pass;
+}
+
+char * strstr(char * in, const char *str)
+{
+    //不存在空密码的情况
+    char *p1 = in, *temp1, *temp2;
+
+    int t = 0;
+
+    int len = strlen(str);
+    //循环p2
+    while (p1 != 0 && *p1 != '\0')
+    {
+        //指到开头
+        temp1 = p1;
+        temp2 = str;
+
+        while (temp1!=0 && temp2!=0 && *temp1 == *temp2)
+        {
+            temp1++;
+            temp2++;
+        }
+        //temp2指向了空，表示成功
+        if (!temp2 || *temp2 == '\0')
+            return p1;
+        p1++;
+    }
+
+    return 0;
+}
+
+
+void login(int fd_stdin, int fd_stdout, int *isLogin, char *user, char *pass)
+{
+    char username[128];
+    char password[128];
+    int step = 0;
+    int fd;
+
+    char passwd[1024];
+    char passFilename[128] = "passwd";
+
+    clearArr(username, 128);
+    clearArr(password, 128);
+    clearArr(passwd, 1024);
+
+    /*初始化密码文件*/
+    fd = open(passFilename, O_CREAT | O_RDWR);
+    if (fd == -1)
+    {
+        //文件已存在，什么都不要做
+    }
+    else
+    {
+        //文件不存在，写一个空的进去
+        char temp[1024] = {0};
+        write(fd, temp, 1);
+        close(fd);
+        //给文件赋值
+        fd = open(passFilename, O_RDWR);
+        write(fd, "root:admin", 1024);
+        close(fd);
+    }
+    //然后读密码文件
+    fd = open(passFilename, O_RDWR);
+    read(fd, passwd, 1024);
+    close(fd);
+
+    /*printl(passwd);
+    printl("\n");*/
+
+    while (1)
+    {
+        if (*isLogin)
+            return;
+        if (step == 0)
+        {
+            printl("Welcome to OS-master!\n");
+            printl("Please login first...\n");
+            printl("login: ");
+            int r = read(fd_stdin, username, 128);
+            if (strcmp(username, "") == 0)
+                continue;
+
+            /*printl(username);*/
+            /*printl("\n");*/
+            step = 1;
+        }
+        else if (step == 1)
+        {
+            printl("Password: ");
+            int r = read(fd_stdin, password, 128);
+
+            /*printl(password);*/
+            /*printl("\n");*/
+
+            if (strcmp(username, "") == 0)
+                continue;
+
+            char tempArr[128];
+            memcpy(tempArr, username, 128);
+            strcat(tempArr, ":");
+            char *temp = strstr(passwd, tempArr);
+
+            if (!temp)
+            {
+                printl("Login incorrect\n\n");
+            }
+            else
+            {
+                char *myPass = findpass(temp);
+
+                /*printl(myPass);*/
+                /*printl("\n");*/
+
+                if (strcmp(myPass, password) == 0)
+                {
+                    *isLogin = 1;
+                    memcpy(user, username, 128);
+                    memcpy(pass, password, 128);
+                    printTitle();
+                }
+                else
+                {
+                    printl("Login incorrect\n\n");
+                }
+            }
+
+            clearArr(username, 128);
+            clearArr(password, 128);
+
+            step = 0;
+        }
+    }
+}
+
+/*删除用户*/
+void doUserDel(char *username)
+{
+    char passwd[1024];
+    char passFilename[128] = "passwd";
+    char *p1, *p2;
+
+    //获取密码文件
+    int fd;
+    fd = open(passFilename, O_RDWR);
+    read(fd, passwd, 1024);
+    close(fd);
+
+    //定位到那个位置
+    char *temp = strcat(username, ":");
+    temp = strstr(passwd, temp);
+
+    if (!temp)
+    {
+        //用户不存在，不用删除
+        printl("User not exists");
+        printl("\n");
+    }
+    else
+    {
+        //处理这一堆鬼
+        p1 = temp;
+        p2 = temp;
+
+        while (p1 && *p1 != ' ')
+        {
+            p1++;
+        }
+        p1++;
+
+        while (p1 && *p1 != '\0')
+        {
+            *p2 = *p1;
+            p1++;
+            p2++;
+        }
+
+        /*做尾处理*/
+        while (p2 != p1)
+        {
+            *p2 = '\0';
+            p2++;
+        }
+        *p2 = '\0';
+
+        fd = open(passFilename, O_RDWR);
+        write(fd, passwd, 1024);
+        close(fd);
+    }
+
+    /*printl(passwd);*/
+    /*printl("\n");*/
+}
+
+void doUserAdd(char *username, char *password)
+{
+    char passwd[1024];
+    char passFilename[128] = "passwd";
+    char *p1, *p2;
+
+    //获取密码文件
+    int fd;
+    fd = open(passFilename, O_RDWR);
+    read(fd, passwd, 1024);
+    close(fd);
+
+    char *newUser = strcat(username, ":");
+    strcat(newUser, password);
+    strcat(newUser, " ");
+
+    strcat(passwd, newUser);
+
+    printl(passwd);
+    printl("\n");
+
+    fd = open(passFilename, O_RDWR);
+    write(fd, passwd, 1024);
+    close(fd);
+}
+
+void doPassWd(char *username, char *password, int fd_stdin)
+{
+    char currentPassword[128];
+    char newPassword[128];
+
+    int step = 0;
+    while(1)
+    {
+        if (step == 0)
+        {
+            printl("Please input your current password:");
+            int r = read(fd_stdin, currentPassword, 128);
+            if (strcmp(currentPassword, "") == 0)
+                continue;
+            step = 1;
+        }
+        else if (step == 1)
+        {
+            if (strcmp(password, currentPassword) == 0)
+            {
+                printl("Please input your new password:");
+                int r = read(fd_stdin, newPassword, 128);
+                if (strcmp(newPassword, "") == 0)
+                    continue;
+                step = 2;
+            }
+            else
+            {
+                printl("Verify failed\n");
+                return;
+            }
+        }
+        else if (step == 2)
+        {
+            doUserDel(username);
+            doUserAdd(username, newPassword);
+            printl("Your password changed successfully\n");
+            return;
+        }
+    }
+}
 
 /*****************************************************************************
  *                                Init
@@ -319,7 +605,7 @@ void untar(const char * filename)
  * 
  *****************************************************************************/
 
-void Init()
+void TestA()
 {
 	 //0号终端
     char tty_name[] = "/dev_tty0";
@@ -340,13 +626,13 @@ void Init()
     int fd_stdout = open(tty_name, O_RDWR);
     assert(fd_stdout == 1);
 
-    printl("OS v1.0.0 tty0\n\n");
+    //printl("OS v1.0.0 tty0\n\n");
 
     clearArr(__path,128*128);
     __pathCount = 0;
 
     while (1) {
-        //login(fd_stdin, fd_stdout, &isLogin, username, password);
+        login(fd_stdin, fd_stdout, &isLogin, username, password);
         //必须要清空数组
         clearArr(rdbuf, 128);
         clearArr(cmd, 128);
@@ -512,13 +798,13 @@ void Init()
         else if (strcmp(cmd, "cp") == 0)
         {
             //首先获得文件内容
-            fd = open(arg1, O_RDWR);
+                        fd = open(arg1, O_RDWR);
             if (fd == -1)
             {
                 printf("File not exists! Please check the filename!\n");
                 continue ;
             }
-         /*   if (!verifyFilePass(arg1, fd_stdin))
+           /* if (!verifyFilePass(arg1, fd_stdin))
             {
                 printf("Authorization failed\n");
                 continue;
@@ -584,15 +870,15 @@ void Init()
         }
         else if (strcmp(cmd, "useradd") == 0)
         {
-            //doUserAdd(arg1, arg2);
+            doUserAdd(arg1, arg2);
         }
         else if (strcmp(cmd, "userdel") == 0)
         {
-            //doUserDel(arg1);
+            doUserDel(arg1);
         }
         else if (strcmp(cmd, "passwd") == 0)
         {
-            //doPassWd(username, password, fd_stdin);
+            doPassWd(username, password, fd_stdin);
         }
         else if (strcmp(cmd, "logout") == 0)
         {
@@ -600,8 +886,8 @@ void Init()
             clearArr(username, 128);
             clearArr(password, 128);
 
-            clear();
-            printl("OS v1.0.0 tty0\n\n");
+            //clear();
+            //printl("OS v1.0.0 tty0\n\n");
         }
         else if (strcmp(cmd, "untar") == 0)
         {
@@ -671,30 +957,35 @@ int open_dir(const char *pathname, int flags)
 /*****************************************************************************
                            Command Analysis and Execution
  *****************************************************************************/
-void TestA()
+/*void TestA()
 {
 	for(;;);
-}
+}*/
 
 void printTitle()
 {
-    clear();
+    //clear();
 
     disp_pos = 0;
     printl("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-    printl(" へ　　　　　／| \n" ); 
-    printl("　/＼7　　∠＿/ \n");
-    printl(" /　│　　 ／　／ \n");
-    printl("│　Z ＿,＜　／　　 /`ヽ \n");
-    printl("│　　　　　ヽ　　 /　　〉 \n");
+/*    printl(" ^      /| \n" ); 
+    printl("　/\\7　　<_/ \n");
+    printl(" /　|　　 /　/ \n");
+    printl("│　Z __,<　/　　 /`\ \n");
+    printl("│　　　　　\　　 /　　> \n");
     printl(" Y　　　　　`　 /　　/ \n");
-    printl("　ｲ●　､　●　　⊂⊃〈　　/ \n");
-    printl("　()　 >　　　　|　＼〈 \n");
-    printl("　>ｰ ､_　 ィ　 │ ／／ \n");
-    printl(" / へ　　 /　ﾉ＜| ＼＼ \n");
-    printl(" ヽ_ﾉ　　(_／　 │／／ \n");
-    printl("　7　　　　　　　|／ \n");
-    printl("　＞―r￣￣`ｰ―＿ \n");
+    printl("　|●　､　●　　<>〈　　/ \n");
+    printl("　()　 >　　　　|　\〈 \n");
+    printl("　>ｰ `_　 ィ　 │ // \n");
+    printl(" / へ　　 /　)＜| \\ \n");
+    printl(" \_)　　(_/　 │// \n");
+    printl("　7　　　　　　　|/ \n");
+    printl("　>_r---`ｰ___\n");*/
+    printl("  ___    ____            _________   ___   ____  ______ ____  ____  \n" ); 
+	printl(" /  _ \\/ ___|          /  _   _  \ / _ \ / ___||_  __||  __|| __ \ \n");
+	printl(" | | | \\___ \    |---|  | | | | | |/ /_\ \\___ \  | |  | |__|| |_) ) \n");
+	printl(" | |_| |___) |  |---|  | | | | | ||  _  ||___)|  | |  | |__ |  __ \  \n");
+	printl(" \\___/ |____/          |_| |_| |_||_| |_||____/  |_|  |____||_|  \_\  \n");
     printl("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     printl("\n\n");
 

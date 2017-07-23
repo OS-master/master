@@ -103,7 +103,7 @@ PRIVATE void init_hd()
 
 	/* Get the number of drives from the BIOS data area */
 	u8 * pNrDrives = (u8*)(0x475);
-	printl("{HD} NrDrives:%d.\n", *pNrDrives);
+	//printl("{HD} NrDrives:%d.\n", *pNrDrives);
 	assert(*pNrDrives);
 
 	put_irq_handler(AT_WINI_IRQ, hd_handler);
@@ -424,19 +424,19 @@ PRIVATE void print_identify_info(u16* hdinfo)
 			s[i*2] = *p++;
 		}
 		s[i*2] = 0;
-		printl("{HD} %s: %s\n", iinfo[k].desc, s);
+		//printl("{HD} %s: %s\n", iinfo[k].desc, s);
 	}
 
 	int capabilities = hdinfo[49];
-	printl("{HD} LBA supported: %s\n",
-	       (capabilities & 0x0200) ? "Yes" : "No");
+	//printl("{HD} LBA supported: %s\n",
+	 //      (capabilities & 0x0200) ? "Yes" : "No");
 
 	int cmd_set_supported = hdinfo[83];
-	printl("{HD} LBA48 supported: %s\n",
-	       (cmd_set_supported & 0x0400) ? "Yes" : "No");
+	//printl("{HD} LBA48 supported: %s\n",
+	//       (cmd_set_supported & 0x0400) ? "Yes" : "No");
 
 	int sectors = ((int)hdinfo[61] << 16) + hdinfo[60];
-	printl("{HD} HD size: %dMB\n", sectors * 512 / 1000000);
+	//printl("{HD} HD size: %dMB\n", sectors * 512 / 1000000);
 }
 
 /*****************************************************************************
